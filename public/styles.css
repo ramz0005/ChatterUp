@@ -1,0 +1,69 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    /* display: flex; */
+    justify-content: space-around;
+    align-items: center;
+    height: 100vh;
+    background-color: rgb(255, 241, 40);
+}
+
+#login-container, #chat-container {
+    width: 100%;
+    height: 80%;
+    padding: 20px;
+    color: rgb(0, 0, 0);
+    background-color: rgb(255, 241, 40);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+#message-display {
+    height: 100%;
+    overflow-y:scroll;
+    border: 1px solid #ddd;
+    padding: 10px;
+    margin-bottom: 10px;
+    background-color: #000000;
+    background-image: url("https://camo.githubusercontent.com/cba518ead87b032dc6f1cbfc7fade27604449201ac1baf34d889f77f093f01ac/68747470733a2f2f7765622e77686174736170702e636f6d2f696d672f62672d636861742d74696c652d6461726b5f61346265353132653731393562366237333364393131306234303866303735642e706e67");
+}
+
+.message {
+    margin-bottom: 10px;
+    max-width: 500px;
+    border: 1px solid rgb(255, 241, 40);
+    border-radius: 20px;
+    background-color: rgb(255, 241, 40);
+    color: rgb(0, 0, 0);
+    overflow-wrap: normal;
+}
+
+#message-form {
+    display: flex;
+    justify-content: space-between;
+}
+
+#message-input{
+    width: 100%;
+    margin-right: 2px;
+    border-color: green;
+    border-width: 2px;
+}
+
+#typing-indicator {
+    font-size: 0.9em;
+    color: gray;
+    margin-top: 5px;
+}
+
+#user-connected-container{
+    color: #000000;
+}
+
+.profile-picture {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 10px;
+    vertical-align: middle;
+}

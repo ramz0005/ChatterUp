@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatterUp</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <header>
+        <nav class="navbar bg-dark border-bottom border-body" data-bs-theme="dark">
+            <div class="container-fluid">
+                <span class="navbar-brand mb-0 h1"><strong><i>ChatterUp</i></strong></span>
+            </div>
+        </nav>
+    </header>
+    <div id="login-container">
+        <div id="login-form">
+            <form id="login-form">
+                <div class="mb-3">
+                    <label for="username-input" class="form-label">Username</label>
+                    <input type="text" class="form-control" id="username-input" placeholder="Enter your username"
+                        required>
+                </div>
+                <div class="mb-3">
+                    <label for="room-input" class="form-label">Room ID</label>
+                    <input type="text" class="form-control" id="room-input" placeholder="Enter room ID" required>
+                </div>
+                <div class="mb-3">
+                    <label for="profile-picture-input" class="form-label">Profile Picture</label>
+                    <input type="file" class="form-control" id="profile-picture-input" accept="image/*">
+                </div>
+                <button type="submit" class="btn btn-secondary" id="start-chatting">Start Chatting</button>
+            </form>
+        </div>
+    </div>
+
+    <audio id="notification-sound" src="sounds/notification.mp3" preload="auto"></audio>
+
+    <div id="chat-container" style="display: none;">
+        <div id="message-display" class="messages"></div>
+        <form id="message-form">
+            <input type="text" id="message-input" class="form-control" placeholder="Type your message" required>
+            <button type="submit" id="message-send" class="btn btn-success">Send</button>
+        </form>
+        <div id="typing-indicator" style="display: none;"></div>
+        <div id="user-connected-container"></div>
+    </div>
+
+    <script src="http://localhost:3000/socket.io/socket.io.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const socket = io.connect('http://localhost:3000');
+
+            const notificationSound = document.getElementById('notification-sound');
+            let username; // Declare username here so it is available globally
+
+            document.getElementById('login-form').addEventListener('submit', function (e) {
+                e.preventDefault();
+                username = document.getElementById('username-input').value; // Assign value here
+                const room = document.getElementById('room-input').value;
+                const profilePictureInput = document.getElementById('profile-picture-input');
+
+                let profilePicture = '';
+
+                if (profilePictureInput.files.length > 0) {
+                    const reader = new FileReader();
+                    reader.onload = function (event) {
+                        profilePicture = event.target.result;
+
+                        if (username && room) {
+                            socket.emit('joinRoom', { username, room, profilePicture });
+
+                            // Hide login and show chat container
+                            document.getElementById('login-container').style.display = 'none';
+                            document.getElementById('chat-container').style.display = 'block';
+
+                            // Handle message sending
+                            setupMessageSending(username, room, profilePicture);
+                        }
+                    };
+                    reader.readAsDataURL(profilePictureInput.files[0]);
+                } else {
+                    if (username && room) {
+                        socket.emit('joinRoom', { username, room, profilePicture });
+
+                        // Hide login and show chat container
+                        document.getElementById('login-container').style.display = 'none';
+                        document.getElementById('chat-container').style.display = 'block';
+
+                        // Handle message sending
+                        setupMessageSending(username, room, profilePicture);
+                    }
+                }
+            });
+
+            function setupMessageSending(username, room, profilePicture) {
+                const messageForm = document.getElementById('message-form');
+                messageForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const messageText = document.getElementById('message-input').value;
+
+                    if (messageText) {
+                        const messageData = {
+                            username,
+                            text: messageText,
+                            room,
+                            profilePicture,
+                            timestamp: new Date(),
+                        };
+
+                        socket.emit('sendMessage', messageData);
+                        document.getElementById('message-input').value = '';
+                    }
+                });
+
+                // Typing indicator
+                const messageInput = document.getElementById('message-input');
+                messageInput.addEventListener('input', () => {
+                    if (messageInput.value) {
+                        socket.emit('typing', { username, room });
+                    } else {
+                        socket.emit('stopTyping', { room });
+                    }
+                });
+
+                messageInput.addEventListener('blur', () => socket.emit('stopTyping', { room }));
+            }
+
+            // Listen for messages
+            socket.on('message', (message) => {
+                const messageDisplay = document.getElementById('message-display');
+                const messageElement = document.createElement('div');
+                messageElement.classList.add('message');
+                messageElement.innerHTML = `
+                    <img src="${message.profilePicture || 'default-profile-picture.png'}" alt="${message.username}" class="profile-picture">
+                    <strong>${message.username}</strong> (${new Date(message.timestamp).toLocaleTimeString()}): ${message.text}
+                `;
+                messageDisplay.appendChild(messageElement);
+                messageDisplay.scrollTop = messageDisplay.scrollHeight;
+
+                // Play notification sound if the message is from another user
+                if (message.username !== username) {
+                    notificationSound.play().catch(error => console.error('Failed to play sound:', error));
+                }
+            });
+
+            // Listen for chat history
+            socket.on('chatHistory', (messages) => {
+                const messageDisplay = document.getElementById('message-display');
+                messages.forEach((message) => {
+                    const messageElement = document.createElement('div');
+                    messageElement.classList.add('message');
+                    messageElement.innerHTML = `
+                        <img src="${message.profilePicture || 'default-profile-picture.png'}" alt="${message.username}" class="profile-picture">
+                        <strong>${message.username}</strong> (${new Date(message.timestamp).toLocaleTimeString()}): ${message.text}
+                    `;
+                    messageDisplay.appendChild(messageElement);
+                });
+                messageDisplay.scrollTop = messageDisplay.scrollHeight;
+            });
+
+            // Listen for typing indicator
+            socket.on('typing', (username) => {
+                const typingElement = document.getElementById('typing-indicator');
+                typingElement.innerText = `${username} is typing...`;
+                typingElement.style.display = 'block';
+            });
+
+            socket.on('stopTyping', () => {
+                const typingElement = document.getElementById('typing-indicator');
+                typingElement.style.display = 'none';
+            });
+
+            // Listen for user count update
+            socket.on('userCount', (count) => {
+                document.getElementById('user-connected-container').innerText = `Users connected: ${count}`;
+            });
+        });
+    </script>
+</body>
+
+</html>
